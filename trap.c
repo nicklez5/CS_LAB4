@@ -7,7 +7,7 @@
 #include "x86.h"
 #include "traps.h"
 #include "spinlock.h"
-
+#include <stdio.h>
 // Interrupt descriptor table (shared by all CPUs).
 struct gatedesc idt[256];
 extern uint vectors[];  // in vectors.S: array of 256 entry pointers
@@ -67,6 +67,9 @@ trap(struct trapframe *tf)
     kbdintr();
     lapiceoi();
     break;
+  case T_PGFLT:
+   cprintf("I HAVE FAILED U cpu%d\n", cpuid());
+   break; 
   case T_IRQ0 + IRQ_COM1:
     uartintr();
     lapiceoi();

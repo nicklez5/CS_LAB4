@@ -32,17 +32,20 @@ void shminit() {
 //Pointer: USED to return a pointer to the shared page | RETURN VIRTUAL ADDRESS ON THIS CALL
 int shm_open(int id, char **pointer) {
   struct proc *curproc = myproc(); 
-  int i, page_num, yy;
-  page_num = -1; 
+  int i, page_num, page_num2;
+  page_num = -1;
+  page_num2 = -1; 
   int this_sz;
-  acquire(&(shm_table.lock));
+
   for(i = 0; i < 64; i++){
     if(shm_table.shm_pages[i].id == id){
        page_num = i;
     }
+    if(shm_table.shm_pages[i].id == 0)
+        page_num2 = i;
   }
 
-
+  acquire(&(shm_table.lock));
   //It already exists 
   /* Increase ref count, MAPPAGES VA & PA
    * UPDATE SZ */  
@@ -55,21 +58,14 @@ int shm_open(int id, char **pointer) {
     //*pointer = (char *)curproc->sz; 
      
   }else{
-    //It needs to allocate a page, map it and store this information in the shm_table
-    for(yy = 0; yy < 64; yy++){
-        if(shm_table.shm_pages[yy].id == 0){
-            page_num = yy;
-        }
-    } 
-    shm_table.shm_pages[page_num].id = id;
-    shm_table.shm_pages[page_num].frame = kalloc();
-    shm_table.shm_pages[page_num].refcnt = 1;
-
-    this_sz = PGROUNDUP(curproc->sz); 
-
-    mappages(curproc->pgdir, (void *)this_sz, PGSIZE, V2P(shm_table.shm_pages[page_num].frame), PTE_W | PTE_U);
-    *pointer = (char *)this_sz;
-    curproc->sz = this_sz + PGSIZE;	
+    //It needs to allocate a page, map it and store this information in the shm_table 
+    shm_table.shm_pages[page_num2].id = id;
+    shm_table.shm_pages[page_num2].frame = kalloc();
+    shm_table.shm_pages[page_num2].refcnt = 1;
+ 
+    //mappages(curproc->pgdir, (void *)this_sz, PGSIZE, V2P(shm_table.shm_pages[page_num2].frame), PTE_W | PTE_U);
+    *pointer = shm_table.shm_pages[page_num2].frame;
+    //curproc->sz = this_sz + PGSIZE;	
   }
   release(&(shm_table.lock)); 
     
