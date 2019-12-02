@@ -66,10 +66,7 @@ trap(struct trapframe *tf)
   case T_IRQ0 + IRQ_KBD:
     kbdintr();
     lapiceoi();
-    break;
-  case T_PGFLT:
-   cprintf("I HAVE FAILED U cpu%d\n", cpuid());
-   break; 
+    break; 
   case T_IRQ0 + IRQ_COM1:
     uartintr();
     lapiceoi();

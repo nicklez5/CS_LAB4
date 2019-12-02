@@ -30,75 +30,65 @@ void shminit() {
 
 //ID : Shared memory segment
 //Pointer: USED to return a pointer to the shared page | RETURN VIRTUAL ADDRESS ON THIS CALL
-int shm_open(int id, char **pointer) {
-  struct proc *curproc = myproc(); 
-  int i, page_num, page_num2;
-  page_num = -1;
-  page_num2 = -1; 
-  int this_sz;
-
-  for(i = 0; i < 64; i++){
-    if(shm_table.shm_pages[i].id == id){
-       page_num = i;
-    }
-    if(shm_table.shm_pages[i].id == 0)
-        page_num2 = i;
-  }
-
-  acquire(&(shm_table.lock));
-  //It already exists 
-  /* Increase ref count, MAPPAGES VA & PA
-   * UPDATE SZ */  
-  if(page_num != -1){
-    this_sz = PGROUNDUP(curproc->sz);
-    mappages(curproc->pgdir, (void*)this_sz, PGSIZE, V2P(shm_table.shm_pages[page_num].frame), PTE_W | PTE_U);
-    shm_table.shm_pages[page_num].refcnt++;
-    *pointer = (char *)this_sz;
-    curproc->sz = this_sz + PGSIZE;
-    //*pointer = (char *)curproc->sz; 
-     
-  }else{
-    //It needs to allocate a page, map it and store this information in the shm_table 
-    shm_table.shm_pages[page_num2].id = id;
-    shm_table.shm_pages[page_num2].frame = kalloc();
-    shm_table.shm_pages[page_num2].refcnt = 1;
+int shm_open(int id, char **pointer) { 
+  int i;
  
-    //mappages(curproc->pgdir, (void *)this_sz, PGSIZE, V2P(shm_table.shm_pages[page_num2].frame), PTE_W | PTE_U);
-    *pointer = shm_table.shm_pages[page_num2].frame;
-    //curproc->sz = this_sz + PGSIZE;	
+  
+  acquire(&(shm_table.lock));
+
+  //Looks through shm_table to see if id exists.
+  for(i = 0; i < 64; i++){
+
+    //It does exists
+    if(shm_table.shm_pages[i].id == id){
+       mappages(myproc()->pgdir, (void*)PGROUNDUP(myproc()->sz), PGSIZE , V2P(shm_table.shm_pages[i].frame), PTE_W | PTE_U);
+       shm_table.shm_pages[i].refcnt++;
+       *pointer = (char *)PGROUNDUP(myproc()->sz); 
+       myproc()->sz += PGSIZE;
+       release(&(shm_table.lock));
+       return 0;
+    }
   }
-  release(&(shm_table.lock)); 
-    
-
-
-
+  
+  //IT doesnt exist
+  for(i = 0; i < 64; i++){
+    if(shm_table.shm_pages[i].id == 0){
+        shm_table.shm_pages[i].id = id;
+        shm_table.shm_pages[i].frame = kalloc();
+        shm_table.shm_pages[i].refcnt = 1;
+        memset(shm_table.shm_pages[i].frame,0,PGSIZE);
+        mappages(myproc()->pgdir, (void *)PGROUNDUP(myproc()->sz), PGSIZE, V2P(shm_table.shm_pages[i].frame), PTE_W | PTE_U);
+        *pointer = (char *)PGROUNDUP(myproc()->sz);
+        myproc()->sz += PGSIZE;
+        release(&(shm_table.lock));
+        return 0;
+    }
+  } 
+   
+  release(&(shm_table.lock));
+   
   return 0; 
 }
 
 
 int shm_close(int id){
 
-   int i, page_num;
-   page_num = -1;
-   
+   int i;
+
    acquire(&(shm_table.lock));
    for(i = 0; i < 64; i++){
       if(shm_table.shm_pages[i].id == id){
-         page_num = i;
+        shm_table.shm_pages[i].refcnt -= 1;
+        if(shm_table.shm_pages[i].refcnt <= 0){
+            shm_table.shm_pages[i].id = 0;
+            shm_table.shm_pages[i].frame = 0;
+            shm_table.shm_pages[i].refcnt = 0;   
+        }
+        release(&(shm_table.lock));
+        return 0;   
       }
    }
-   if(page_num != -1){
-      //acquire(&(shm_table.lock));
-      shm_table.shm_pages[page_num].refcnt -= 1;
-      if(shm_table.shm_pages[page_num].refcnt == 0){
-         shm_table.shm_pages[page_num].id = 0;
-         shm_table.shm_pages[page_num].frame = 0;
-         shm_table.shm_pages[page_num].refcnt = 0;
-      }
-      release(&(shm_table.lock));      
-   }else{
-        release(&(shm_table.lock));
-   }         
-   return 0; 
+   release(&(shm_table.lock));     
+   return 1; 
    //added to remove compiler warning -- you should decide what to return
 }
