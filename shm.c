@@ -32,63 +32,62 @@ void shminit() {
 //Pointer: USED to return a pointer to the shared page | RETURN VIRTUAL ADDRESS ON THIS CALL
 int shm_open(int id, char **pointer) { 
   int i;
- 
-  
   acquire(&(shm_table.lock));
-
-  //Looks through shm_table to see if id exists.
   for(i = 0; i < 64; i++){
 
-    //It does exists
+    //Case 1 
     if(shm_table.shm_pages[i].id == id){
        mappages(myproc()->pgdir, (void*)PGROUNDUP(myproc()->sz), PGSIZE , V2P(shm_table.shm_pages[i].frame), PTE_W | PTE_U);
        shm_table.shm_pages[i].refcnt++;
        *pointer = (char *)PGROUNDUP(myproc()->sz); 
-       myproc()->sz += PGSIZE;
-       release(&(shm_table.lock));
-       return 0;
+       myproc()->sz = PGROUNDUP(myproc()->sz) + PGSIZE;
+       //myproc()->sz += PGSIZE;
+       //break;
     }
   }
-  
-  //IT doesnt exist
+   
   for(i = 0; i < 64; i++){
-    if(shm_table.shm_pages[i].id == 0){
-        shm_table.shm_pages[i].id = id;
+
+     //Case 2 
+     if(shm_table.shm_pages[i].id == 0){
+
+        shm_table.shm_pages[i].id = id; 
+        //ALLOCATING A PAGE 
         shm_table.shm_pages[i].frame = kalloc();
+
+        //ADD 0's TO THAT PAGE FRAME
+        memset(shm_table.shm_pages[i].frame,0, PGSIZE);
         shm_table.shm_pages[i].refcnt = 1;
-        memset(shm_table.shm_pages[i].frame,0,PGSIZE);
+
         mappages(myproc()->pgdir, (void *)PGROUNDUP(myproc()->sz), PGSIZE, V2P(shm_table.shm_pages[i].frame), PTE_W | PTE_U);
         *pointer = (char *)PGROUNDUP(myproc()->sz);
-        myproc()->sz += PGSIZE;
-        release(&(shm_table.lock));
-        return 0;
+        myproc()->sz = PGROUNDUP(myproc()->sz) + PGSIZE;
     }
-  } 
+  }
+ 
    
   release(&(shm_table.lock));
-   
   return 0; 
 }
 
 
 int shm_close(int id){
-
-   int i;
-
    acquire(&(shm_table.lock));
+   int i;
    for(i = 0; i < 64; i++){
       if(shm_table.shm_pages[i].id == id){
-        shm_table.shm_pages[i].refcnt -= 1;
-        if(shm_table.shm_pages[i].refcnt <= 0){
+        if(shm_table.shm_pages[i].refcnt > 1){
+            shm_table.shm_pages[i].refcnt--;
+        }else{
             shm_table.shm_pages[i].id = 0;
             shm_table.shm_pages[i].frame = 0;
-            shm_table.shm_pages[i].refcnt = 0;   
+            shm_table.shm_pages[i].refcnt = 0;
         }
-        release(&(shm_table.lock));
-        return 0;   
+        
       }
    }
-   release(&(shm_table.lock));     
-   return 1; 
+   release(&(shm_table.lock));
+   return 0; 
+
    //added to remove compiler warning -- you should decide what to return
 }
