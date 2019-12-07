@@ -14,18 +14,23 @@ int main(int argc, char *argv[])
     1000:	55                   	push   %ebp
     1001:	89 e5                	mov    %esp,%ebp
     1003:	57                   	push   %edi
-    1004:	56                   	push   %esi
+//which we can now use but will be shared between the two processes
+  
+  shm_open(1,(char **)&counter);
  
 //  printf(1,"%s returned successfully from shm_open with counter %x\n", pid? "Child": "Parent", counter); 
   for(i = 0; i < 10000; i++)
-  {
-     uacquire(&(counter->lock));
-     if(i % 1000 == 0)
-    1005:	be d3 4d 62 10       	mov    $0x10624dd3,%esi
+    1004:	31 ff                	xor    %edi,%edi
 {
-    100a:	53                   	push   %ebx
-  for(i = 0; i < 10000; i++)
-    100b:	31 db                	xor    %ebx,%ebx
+    1006:	56                   	push   %esi
+    1007:	53                   	push   %ebx
+     uacquire(&(counter->lock));
+     //if(i % 1000 == 0)
+        //printf(1,"Counter in %s is %d at address %x\n",pid? "Parent" : "Child", counter->cnt,counter);
+     counter->cnt++;
+     urelease(&(counter->lock));
+     if(i % 1000 == 0)
+    1008:	bb d3 4d 62 10       	mov    $0x10624dd3,%ebx
 {
     100d:	83 e4 f0             	and    $0xfffffff0,%esp
     1010:	83 ec 30             	sub    $0x30,%esp
@@ -34,7 +39,7 @@ int main(int argc, char *argv[])
   sleep(1);
     1018:	c7 04 24 01 00 00 00 	movl   $0x1,(%esp)
   pid = fork();
-    101f:	89 c7                	mov    %eax,%edi
+    101f:	89 c6                	mov    %eax,%esi
   sleep(1);
     1021:	e8 9c 03 00 00       	call   13c2 <sleep>
   shm_open(1,(char **)&counter);
@@ -47,43 +52,41 @@ int main(int argc, char *argv[])
     1040:	8b 44 24 2c          	mov    0x2c(%esp),%eax
     1044:	89 04 24             	mov    %eax,(%esp)
     1047:	e8 b4 07 00 00       	call   1800 <uacquire>
-     if(i % 1000 == 0)
-    104c:	89 d8                	mov    %ebx,%eax
-    104e:	f7 ee                	imul   %esi
-    1050:	89 d8                	mov    %ebx,%eax
-    1052:	c1 f8 1f             	sar    $0x1f,%eax
-    1055:	c1 fa 06             	sar    $0x6,%edx
-    1058:	29 c2                	sub    %eax,%edx
-    105a:	69 d2 e8 03 00 00    	imul   $0x3e8,%edx,%edx
-    1060:	39 d3                	cmp    %edx,%ebx
-    1062:	75 3e                	jne    10a2 <main+0xa2>
-        printf(1,"Counter in %s is %d at address %x\n",pid? "Parent" : "Child", counter->cnt,counter);
-    1064:	8b 54 24 2c          	mov    0x2c(%esp),%edx
-    1068:	b8 3b 18 00 00       	mov    $0x183b,%eax
-    106d:	85 ff                	test   %edi,%edi
-    106f:	8b 4a 04             	mov    0x4(%edx),%ecx
-    1072:	89 54 24 10          	mov    %edx,0x10(%esp)
-    1076:	c7 44 24 04 74 18 00 	movl   $0x1874,0x4(%esp)
-    107d:	00 
-    107e:	c7 04 24 01 00 00 00 	movl   $0x1,(%esp)
-    1085:	89 4c 24 1c          	mov    %ecx,0x1c(%esp)
-    1089:	b9 34 18 00 00       	mov    $0x1834,%ecx
-    108e:	0f 45 c1             	cmovne %ecx,%eax
-    1091:	8b 4c 24 1c          	mov    0x1c(%esp),%ecx
-    1095:	89 44 24 08          	mov    %eax,0x8(%esp)
-    1099:	89 4c 24 0c          	mov    %ecx,0xc(%esp)
-    109d:	e8 ee 03 00 00       	call   1490 <printf>
      counter->cnt++;
-    10a2:	8b 44 24 2c          	mov    0x2c(%esp),%eax
-  for(i = 0; i < 10000; i++)
-    10a6:	83 c3 01             	add    $0x1,%ebx
-     counter->cnt++;
-    10a9:	83 40 04 01          	addl   $0x1,0x4(%eax)
+    104c:	8b 44 24 2c          	mov    0x2c(%esp),%eax
+    1050:	83 40 04 01          	addl   $0x1,0x4(%eax)
      urelease(&(counter->lock));
-    10ad:	89 04 24             	mov    %eax,(%esp)
-    10b0:	e8 6b 07 00 00       	call   1820 <urelease>
+    1054:	89 04 24             	mov    %eax,(%esp)
+    1057:	e8 c4 07 00 00       	call   1820 <urelease>
+     if(i % 1000 == 0)
+    105c:	89 f8                	mov    %edi,%eax
+    105e:	f7 eb                	imul   %ebx
+    1060:	89 f8                	mov    %edi,%eax
+    1062:	c1 f8 1f             	sar    $0x1f,%eax
+    1065:	c1 fa 06             	sar    $0x6,%edx
+    1068:	29 c2                	sub    %eax,%edx
+    106a:	69 d2 e8 03 00 00    	imul   $0x3e8,%edx,%edx
+    1070:	39 d7                	cmp    %edx,%edi
+    1072:	75 3e                	jne    10b2 <main+0xb2>
+        printf(1,"Counter in %s is %d at address %x\n",pid? "Parent" : "Child", counter->cnt,counter);
+    1074:	8b 54 24 2c          	mov    0x2c(%esp),%edx
+    1078:	b8 3b 18 00 00       	mov    $0x183b,%eax
+    107d:	85 f6                	test   %esi,%esi
+    107f:	8b 4a 04             	mov    0x4(%edx),%ecx
+    1082:	89 54 24 10          	mov    %edx,0x10(%esp)
+    1086:	c7 44 24 04 74 18 00 	movl   $0x1874,0x4(%esp)
+    108d:	00 
+    108e:	c7 04 24 01 00 00 00 	movl   $0x1,(%esp)
+    1095:	89 4c 24 1c          	mov    %ecx,0x1c(%esp)
+    1099:	b9 34 18 00 00       	mov    $0x1834,%ecx
+    109e:	0f 45 c1             	cmovne %ecx,%eax
+    10a1:	8b 4c 24 1c          	mov    0x1c(%esp),%ecx
+    10a5:	89 44 24 08          	mov    %eax,0x8(%esp)
+    10a9:	89 4c 24 0c          	mov    %ecx,0xc(%esp)
+    10ad:	e8 de 03 00 00       	call   1490 <printf>
   for(i = 0; i < 10000; i++)
-    10b5:	81 fb 10 27 00 00    	cmp    $0x2710,%ebx
+    10b2:	83 c7 01             	add    $0x1,%edi
+    10b5:	81 ff 10 27 00 00    	cmp    $0x2710,%edi
     10bb:	75 83                	jne    1040 <main+0x40>
     //print something because we are curious and to give a chance to switch process
     
@@ -93,7 +96,7 @@ int main(int argc, char *argv[])
     printf(1,"Counter in parent is %d\n",counter->cnt);
     10bd:	8b 44 24 2c          	mov    0x2c(%esp),%eax
   if(pid){
-    10c1:	85 ff                	test   %edi,%edi
+    10c1:	85 f6                	test   %esi,%esi
     printf(1,"Counter in parent is %d\n",counter->cnt);
     10c3:	8b 40 04             	mov    0x4(%eax),%eax
     10c6:	89 44 24 08          	mov    %eax,0x8(%esp)

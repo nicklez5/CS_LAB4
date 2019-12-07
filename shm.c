@@ -46,7 +46,7 @@ int shm_open(int id, char **pointer) {
     if(shm_table.shm_pages[i].id == 0 && page_not_found == 0)
         page_not_found = i;
   }
-
+  //ID does not exists
   if(i >= 64 && page_not_found != 0){
     i = page_not_found;
 
@@ -60,22 +60,20 @@ int shm_open(int id, char **pointer) {
 
     *pointer = (char *)va;
     curproc->sz = PGROUNDUP(curproc->sz) + PGSIZE;
-    release(&(shm_table.lock));
-    return va;
+
+  //ID does exist
   }else if (i < 64){
 
     uint va = PGROUNDUP(curproc->sz);
     mappages(curproc->pgdir, (void *)va, PGSIZE, V2P(shm_table.shm_pages[i].frame), PTE_W | PTE_U);
     shm_table.shm_pages[i].refcnt++;
     *pointer = (char *)va;
-    curproc->sz = PGROUNDUP(curproc->sz) + PGSIZE;    
-    release(&(shm_table.lock));
-    return va; 
+    curproc->sz = PGROUNDUP(curproc->sz) + PGSIZE;     
 
   }else{
 
   }
-
+    
     release(&(shm_table.lock));
     return 0; 
 }
@@ -95,6 +93,7 @@ int shm_close(int id){
             shm_table.shm_pages[i].id = 0;
         }
    }
+
    release(&(shm_table.lock));
    return 0; 
 
