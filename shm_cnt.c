@@ -30,10 +30,10 @@ int main(int argc, char *argv[])
      //if(i % 1000 == 0)
         //printf(1,"Counter in %s is %d at address %x\n",pid? "Parent" : "Child", counter->cnt,counter);
      counter->cnt++;
-     urelease(&(counter->lock));
+     //urelease(&(counter->lock));
      if(i % 1000 == 0)
         printf(1,"Counter in %s is %d at address %x\n",pid? "Parent" : "Child", counter->cnt,counter);
- 
+     urelease(&(counter->lock));
     //print something because we are curious and to give a chance to switch process
     
   }
